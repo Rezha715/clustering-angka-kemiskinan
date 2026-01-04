@@ -209,10 +209,10 @@ elif page == "🤖 Clustering Analysis":
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     
     selected_features = st.multiselect(
-        "Pilih fitur untuk clustering:",
-        numeric_cols,
-        default=['Persentase_Kemiskinan_Kota', 'Persentase_Kemiskinan_Desa', 'gap_kota_desa']
-    )
+    "Pilih fitur untuk clustering:",
+    numeric_cols
+)
+
     
     if len(selected_features) >= 2:
         X = df[selected_features].copy()
