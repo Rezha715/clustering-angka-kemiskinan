@@ -12,7 +12,6 @@ from sklearn.neighbors import NearestNeighbors
 from kneed import KneeLocator
 import warnings
 warnings.filterwarnings('ignore')
-import os
 
 # Set page config
 st.set_page_config(
@@ -22,7 +21,7 @@ st.set_page_config(
 )
 
 # Title
-st.title("📊 Analisis Clustering Kemiskinan Provinsi 2020-2022")
+st.title("📊 Analisis Clustering & Perbandingan Kemiskinan Provinsi")
 st.markdown("---")
 
 # Sidebar for navigation
@@ -32,147 +31,74 @@ page = st.sidebar.radio("Pilih Halaman:",
                         "🔧 Preprocessing", 
                         "📈 EDA & Outlier Detection",
                         "🤖 Clustering Analysis",
-                        "📊 Visualization"])
+                        "📊 Visualization",
+                        "🏆 Analisis Lampung vs Provinsi Lain"])
 
-# Load data from CSV files
+# Load data dengan data baru untuk Lampung dan provinsi lainnya
 @st.cache_data
-def load_data_from_csv():
-    try:
-        # Read CSV files
-        data_2020 = pd.read_csv('data_Kemiskinan,_2020.csv')
-        data_2021 = pd.read_csv('data_Kemiskinan_2021.csv')
-        data_2022 = pd.read_csv('data_Kemiskinan_2022.csv')
-        
-        # Add year column
-        data_2020['Tahun'] = 2020
-        data_2021['Tahun'] = 2021
-        data_2022['Tahun'] = 2022
-        
-        # Combine all data
-        df_combined = pd.concat([data_2020, data_2021, data_2022], ignore_index=True)
-        
-        # Clean column names
-        df_combined.columns = df_combined.columns.str.strip()
-        
-        # Remove empty rows if any
-        df_combined = df_combined.dropna(how='all')
-        
-        return df_combined, data_2020, data_2021, data_2022
-    except Exception as e:
-        st.error(f"Error loading CSV files: {e}")
-        # Fallback to sample data if CSV files not found
-        return load_sample_data(), None, None, None
-
-@st.cache_data
-def load_sample_data():
-    # Fallback sample data (same as your original)
+def load_data():
+    # Data sampel yang lebih lengkap dengan berbagai provinsi
     data = {
-        'Kota - Desa': ['Perkotaan', 'Pedesaan', 'Pedesaan + Perkotaan', 
-                       'Perkotaan', 'Pedesaan', 'Pedesaan + Perkotaan'],
-        'Persentase_Kemiskinan_Kota': [9.02, 13.83, 12.34, 9.59, 14.22, 12.76],
-        'Persentase_Kemiskinan_Desa': [10.5, 15.3, 13.8, 10.8, 15.8, 14.1],
-        'Garis_Kemiskinan_Kota': [500720, 433843, 453733, 504330, 437107, 457495],
-        'Garis_Kemiskinan_Desa': [510000, 440000, 460000, 515000, 445000, 465000],
-        'Indeks_Keparahan_Kota': [0.24, 0.49, 0.41, 0.29, 0.7, 0.57],
-        'Indeks_Keparahan_Desa': [0.26, 0.52, 0.43, 0.31, 0.73, 0.6],
-        'Indeks_Kedalaman_Kota': [1.23, 2.2, 1.9, 1.31, 2.48, 2.11],
-        'Indeks_Kedalaman_Desa': [1.28, 2.25, 1.95, 1.35, 2.53, 2.16],
-        'Jumlah_Penduduk_Miskin_Kota': [237.1, 812.22, 1049.32, 259.28, 831.86, 1091.14],
-        'Jumlah_Penduduk_Miskin_Desa': [250, 850, 1100, 265, 870, 1150],
-        'Tahun': [2020, 2020, 2020, 2020, 2020, 2020]
+        'Provinsi': ['Lampung', 'Lampung', 'Jawa Barat', 'Jawa Barat', 'Jawa Timur', 'Jawa Timur',
+                    'Sumatera Utara', 'Sumatera Utara', 'Banten', 'Banten', 'DI Yogyakarta', 'DI Yogyakarta',
+                    'Bali', 'Bali', 'Nusa Tenggara Timur', 'Nusa Tenggara Timur', 'Papua', 'Papua'],
+        'Kota - Desa': ['Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan',
+                       'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan',
+                       'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan'],
+        'Tahun': [2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020],
+        'Semester': ['Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1',
+                    'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1',
+                    'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1'],
+        'Persentase_Kemiskinan': [9.5, 15.2, 8.3, 12.1, 7.8, 11.5, 10.2, 14.8, 9.1, 13.5, 8.7, 14.2, 
+                                  6.5, 9.8, 12.3, 18.7, 15.6, 23.4],
+        'Garis_Kemiskinan': [485000, 420000, 520000, 445000, 510000, 435000, 475000, 410000, 530000, 
+                            455000, 495000, 425000, 540000, 460000, 465000, 400000, 455000, 390000],
+        'Indeks_Keparahan': [0.28, 0.52, 0.25, 0.45, 0.23, 0.42, 0.30, 0.55, 0.27, 0.49, 0.26, 0.51, 
+                            0.20, 0.38, 0.35, 0.62, 0.40, 0.70],
+        'Indeks_Kedalaman': [1.25, 2.15, 1.15, 1.95, 1.10, 1.85, 1.35, 2.25, 1.20, 2.05, 1.18, 2.10, 
+                            0.95, 1.65, 1.50, 2.45, 1.75, 2.80],
+        'Jumlah_Penduduk_Miskin': [280.5, 450.3, 1200.8, 850.2, 950.4, 680.7, 320.6, 520.4, 180.3, 
+                                  290.5, 85.2, 150.8, 45.6, 75.3, 65.4, 210.7, 95.8, 350.2],
+        'Populasi_Total': [8500000, 8500000, 49500000, 49500000, 40500000, 40500000, 14700000, 14700000,
+                          12300000, 12300000, 3700000, 3700000, 4300000, 4300000, 5300000, 5300000,
+                          4300000, 4300000]
     }
-    return pd.DataFrame(data)
-
-# Load data
-df_combined, df_2020, df_2021, df_2022 = load_data_from_csv()
-
-# If CSV loading failed, use sample data
-if df_2020 is None:
-    df = load_sample_data()
-    df_combined = df.copy()
-else:
-    # Process the combined data for clustering
-    # We need to restructure the data for analysis
-    df = df_combined.copy()
+    df = pd.DataFrame(data)
     
-    # Extract relevant columns and restructure
-    st.sidebar.info(f"Data loaded: {len(df)} rows, {len(df.columns)} columns")
+    # Hitung tingkat kemiskinan relatif
+    df['Tingkat_Kemiskinan_Relatif'] = df['Persentase_Kemiskinan'] / df['Persentase_Kemiskinan'].mean()
+    df['Kesenjangan_Kota_Desa'] = df.groupby('Provinsi')['Persentase_Kemiskinan'].transform(lambda x: x.max() - x.min())
+    
+    return df
+
+df = load_data()
 
 # Page 1: Data Overview
 if page == "📁 Data Overview":
     st.header("Data Overview")
     
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Total Data Points", len(df_combined))
-    
-    with col2:
-        st.metric("Years Available", len(df_combined['Tahun'].unique()))
-    
-    with col3:
-        st.metric("Regions Types", len(df_combined['Kota - Desa'].unique()))
-    
-    st.subheader("Preview Data")
-    
-    # Show data preview with tabs for each year
-    tab1, tab2, tab3, tab4 = st.tabs(["Combined Data", "2020 Data", "2021 Data", "2022 Data"])
-    
-    with tab1:
-        st.write("**All Years Combined Data:**")
-        st.dataframe(df_combined.head(), use_container_width=True)
-        
-    with tab2:
-        if df_2020 is not None:
-            st.write("**2020 Data:**")
-            st.dataframe(df_2020.head(), use_container_width=True)
-        else:
-            st.write("2020 data not available")
-    
-    with tab3:
-        if df_2021 is not None:
-            st.write("**2021 Data:**")
-            st.dataframe(df_2021.head(), use_container_width=True)
-        else:
-            st.write("2021 data not available")
-    
-    with tab4:
-        if df_2022 is not None:
-            st.write("**2022 Data:**")
-            st.dataframe(df_2022.head(), use_container_width=True)
-        else:
-            st.write("2022 data not available")
-    
-    st.subheader("Dataset Information")
-    
     col1, col2 = st.columns(2)
     
     with col1:
-        st.write("**Data Structure:**")
-        st.write(f"**Total rows:** {df_combined.shape[0]}")
-        st.write(f"**Total columns:** {df_combined.shape[1]}")
-        st.write(f"**Numeric columns:** {len(df_combined.select_dtypes(include=[np.number]).columns)}")
-        st.write(f"**Categorical columns:** {len(df_combined.select_dtypes(include=['object']).columns)}")
+        st.subheader("Preview Data")
+        st.dataframe(df.head(), use_container_width=True)
     
     with col2:
-        st.write("**Year Distribution:**")
-        year_counts = df_combined['Tahun'].value_counts().sort_index()
-        for year, count in year_counts.items():
-            st.write(f"- **{year}:** {count} records ({count/len(df_combined)*100:.1f}%)")
-        
-        st.write("**Region Type Distribution:**")
-        region_counts = df_combined['Kota - Desa'].value_counts()
-        for region, count in region_counts.items():
-            st.write(f"- **{region}:** {count} records")
+        st.subheader("Informasi Dataset")
+        st.write(f"**Jumlah baris:** {df.shape[0]}")
+        st.write(f"**Jumlah kolom:** {df.shape[1]}")
+        st.write(f"**Jumlah Provinsi:** {df['Provinsi'].nunique()}")
+        st.write(f"**Variabel numerik:** {len(df.select_dtypes(include=[np.number]).columns)}")
+        st.write(f"**Variabel kategorikal:** {len(df.select_dtypes(include=['object']).columns)}")
     
-    st.subheader("Descriptive Statistics")
-    st.dataframe(df_combined.describe(), use_container_width=True)
+    st.subheader("Statistik Deskriptif")
+    st.dataframe(df.describe(), use_container_width=True)
     
     st.subheader("Missing Values")
     missing_df = pd.DataFrame({
-        'Column': df_combined.columns,
-        'Missing Values': df_combined.isnull().sum(),
-        'Percentage': (df_combined.isnull().sum() / len(df_combined) * 100).round(2)
+        'Kolom': df.columns,
+        'Missing Values': df.isnull().sum(),
+        'Percentage': (df.isnull().sum() / len(df) * 100).round(2)
     })
     st.dataframe(missing_df, use_container_width=True)
 
@@ -180,513 +106,415 @@ if page == "📁 Data Overview":
 elif page == "🔧 Preprocessing":
     st.header("Data Preprocessing")
     
-    # Data cleaning options
-    st.subheader("1. Data Cleaning")
+    # Create new feature
+    st.subheader("1. Pembuatan Fitur Baru")
+    st.markdown("""
+    Fitur baru yang dibuat:
+    1. **Tingkat_Kemiskinan_Relatif**: Perbandingan persentase kemiskinan dengan rata-rata nasional
+    2. **Kesenjangan_Kota_Desa**: Selisih persentase kemiskinan kota dan desa per provinsi
+    """)
     
-    if st.checkbox("Show raw data structure"):
-        st.write("**Original Data Columns:**")
-        st.write(list(df_combined.columns))
-        st.write("**First few rows:**")
-        st.dataframe(df_combined.head(), use_container_width=True)
+    col1, col2 = st.columns(2)
     
-    # Since the CSV structure is complex, let's create a simplified version for analysis
-    st.subheader("2. Create Analysis Dataset")
+    with col1:
+        st.write("**Statistik Fitur Baru:**")
+        st.dataframe(df[['Tingkat_Kemiskinan_Relatif', 'Kesenjangan_Kota_Desa']].describe(), 
+                    use_container_width=True)
     
-    # Extract and transform data from the CSV structure
-    if df_2020 is not None and df_2021 is not None and df_2022 is not None:
-        # This is a simplified transformation - you may need to adjust based on your exact needs
-        analysis_data = []
+    with col2:
+        st.write("**Data dengan Fitur Baru:**")
+        st.dataframe(df[['Provinsi', 'Kota - Desa', 'Persentase_Kemiskinan', 
+                        'Tingkat_Kemiskinan_Relatif', 'Kesenjangan_Kota_Desa']].head(10), 
+                    use_container_width=True)
+    
+    # Normalization
+    st.subheader("2. Normalisasi Data")
+    
+    # Select numeric columns for normalization
+    num_cols = st.multiselect(
+        "Pilih kolom untuk dinormalisasi:",
+        df.select_dtypes(include=[np.number]).columns.tolist(),
+        default=['Persentase_Kemiskinan', 'Garis_Kemiskinan', 'Indeks_Keparahan']
+    )
+    
+    if num_cols:
+        # Before normalization
+        st.write("**Data Sebelum Normalisasi:**")
+        st.dataframe(df[num_cols].head(), use_container_width=True)
         
-        for year, df_year in [(2020, df_2020), (2021, df_2021), (2022, df_2022)]:
-            # Clean column names
-            df_year.columns = [str(col).strip() for col in df_year.columns]
-            
-            # Extract relevant data
-            for idx, row in df_year.iterrows():
-                region_type = row['Kota - Desa']
-                
-                # Get values for each semester
-                # Assuming the structure from your CSV
-                if 'Garis Kemiskinan' in str(df_year.columns[1]):
-                    # This is a simplified extraction - you'll need to adjust based on actual structure
-                    analysis_data.append({
-                        'Tahun': year,
-                        'Region': region_type,
-                        'Garis_Kemiskinan_S1': row.iloc[1] if len(row) > 1 else None,
-                        'Garis_Kemiskinan_S2': row.iloc[2] if len(row) > 2 else None,
-                        'Persentase_Kemiskinan_S1': row.iloc[6] if len(row) > 6 else None,
-                        'Persentase_Kemiskinan_S2': row.iloc[7] if len(row) > 7 else None,
-                        'Jumlah_Penduduk_Miskin_S1': row.iloc[9] if len(row) > 9 else None,
-                        'Jumlah_Penduduk_Miskin_S2': row.iloc[10] if len(row) > 10 else None
-                    })
+        # Normalize
+        scaler = StandardScaler()
+        df_norm = df.copy()
+        df_norm[num_cols] = scaler.fit_transform(df[num_cols])
         
-        df_analysis = pd.DataFrame(analysis_data)
-        
-        # Clean numeric columns
-        numeric_cols = ['Garis_Kemiskinan_S1', 'Garis_Kemiskinan_S2', 
-                       'Persentase_Kemiskinan_S1', 'Persentase_Kemiskinan_S2',
-                       'Jumlah_Penduduk_Miskin_S1', 'Jumlah_Penduduk_Miskin_S2']
-        
-        for col in numeric_cols:
-            if col in df_analysis.columns:
-                df_analysis[col] = pd.to_numeric(df_analysis[col], errors='coerce')
-        
-        st.write("**Analysis Dataset Created:**")
-        st.dataframe(df_analysis.head(), use_container_width=True)
-        st.write(f"Shape: {df_analysis.shape}")
-        
-        # Create new features
-        st.subheader("3. Feature Engineering")
-        
-        if all(col in df_analysis.columns for col in ['Persentase_Kemiskinan_S1', 'Persentase_Kemiskinan_S2']):
-            df_analysis['Persentase_Kemiskinan_Rata'] = (df_analysis['Persentase_Kemiskinan_S1'] + df_analysis['Persentase_Kemiskinan_S2']) / 2
-            df_analysis['Perubahan_Persentase'] = df_analysis['Persentase_Kemiskinan_S2'] - df_analysis['Persentase_Kemiskinan_S1']
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write("**New Features Statistics:**")
-                st.dataframe(df_analysis[['Persentase_Kemiskinan_Rata', 'Perubahan_Persentase']].describe(), 
-                           use_container_width=True)
-            
-            with col2:
-                st.write("**Sample with New Features:**")
-                st.dataframe(df_analysis[['Tahun', 'Region', 'Persentase_Kemiskinan_S1', 
-                                        'Persentase_Kemiskinan_S2', 'Persentase_Kemiskinan_Rata',
-                                        'Perubahan_Persentase']].head(), use_container_width=True)
-        
-        # Normalization
-        st.subheader("4. Data Normalization")
-        
-        norm_cols = st.multiselect(
-            "Select columns to normalize:",
-            df_analysis.select_dtypes(include=[np.number]).columns.tolist(),
-            default=['Persentase_Kemiskinan_Rata', 'Perubahan_Persentase'] 
-            if 'Persentase_Kemiskinan_Rata' in df_analysis.columns 
-            else df_analysis.select_dtypes(include=[np.number]).columns.tolist()[:2]
-        )
-        
-        if norm_cols:
-            scaler = StandardScaler()
-            df_norm = df_analysis.copy()
-            df_norm[norm_cols] = scaler.fit_transform(df_analysis[norm_cols])
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write("**Before Normalization:**")
-                st.dataframe(df_analysis[norm_cols].head(), use_container_width=True)
-            
-            with col2:
-                st.write("**After Normalization:**")
-                st.dataframe(df_norm[norm_cols].head(), use_container_width=True)
-            
-            # Store normalized dataframe in session state
-            st.session_state.df_norm = df_norm
-            st.session_state.df_analysis = df_analysis
+        # After normalization
+        st.write("**Data Setelah Normalisasi:**")
+        st.dataframe(df_norm[num_cols].head(), use_container_width=True)
 
 # Page 3: EDA & Outlier Detection
 elif page == "📈 EDA & Outlier Detection":
     st.header("Exploratory Data Analysis & Outlier Detection")
     
-    # Check if we have analysis data
-    if 'df_analysis' in st.session_state:
-        df_analysis = st.session_state.df_analysis
+    # Select column for analysis
+    selected_col = st.selectbox(
+        "Pilih kolom untuk analisis:",
+        df.select_dtypes(include=[np.number]).columns.tolist()
+    )
+    
+    if selected_col:
+        col1, col2 = st.columns(2)
         
-        # Select column for analysis
-        selected_col = st.selectbox(
-            "Pilih kolom untuk analisis:",
-            df_analysis.select_dtypes(include=[np.number]).columns.tolist()
-        )
+        with col1:
+            st.subheader(f"Distribusi {selected_col}")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.histplot(df[selected_col], kde=True, ax=ax)
+            ax.set_title(f'Distribusi {selected_col}')
+            st.pyplot(fig)
         
-        if selected_col:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader(f"Distribusi {selected_col}")
-                fig, ax = plt.subplots(figsize=(10, 6))
-                sns.histplot(df_analysis[selected_col], kde=True, ax=ax)
-                ax.set_title(f'Distribusi {selected_col}')
-                st.pyplot(fig)
-            
-            with col2:
-                st.subheader(f"Boxplot {selected_col}")
-                fig, ax = plt.subplots(figsize=(10, 6))
-                sns.boxplot(y=df_analysis[selected_col], ax=ax)
-                ax.set_title(f'Boxplot {selected_col}')
-                st.pyplot(fig)
-            
-            # Time series analysis by year
-            st.subheader(f"Trend {selected_col} per Tahun")
-            
-            if 'Tahun' in df_analysis.columns:
-                fig, ax = plt.subplots(figsize=(12, 6))
-                
-                # Group by year and region
-                if 'Region' in df_analysis.columns:
-                    pivot_data = df_analysis.pivot_table(
-                        values=selected_col,
-                        index='Tahun',
-                        columns='Region',
-                        aggfunc='mean'
-                    )
-                    pivot_data.plot(marker='o', ax=ax)
-                else:
-                    yearly_avg = df_analysis.groupby('Tahun')[selected_col].mean()
-                    yearly_avg.plot(marker='o', ax=ax)
-                
-                ax.set_title(f'Trend {selected_col} per Tahun')
-                ax.set_xlabel('Tahun')
-                ax.set_ylabel(selected_col)
-                ax.grid(True)
-                ax.legend(title='Region')
-                st.pyplot(fig)
-            
-            # Outlier detection
-            st.subheader("Deteksi Outlier")
-            
-            # IQR Method
-            Q1 = df_analysis[selected_col].quantile(0.25)
-            Q3 = df_analysis[selected_col].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-            
-            outliers_iqr = df_analysis[(df_analysis[selected_col] < lower_bound) | (df_analysis[selected_col] > upper_bound)]
-            
-            # Z-score Method
-            z_scores = np.abs((df_analysis[selected_col] - df_analysis[selected_col].mean()) / df_analysis[selected_col].std())
-            outliers_z = df_analysis[z_scores > 3]
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.metric("Outlier (IQR Method)", len(outliers_iqr))
-                if len(outliers_iqr) > 0:
-                    st.write("Contoh outlier:")
-                    st.dataframe(outliers_iqr[['Tahun', 'Region', selected_col]].head(), 
-                               use_container_width=True)
-            
-            with col2:
-                st.metric("Outlier (Z-score > 3)", len(outliers_z))
-                if len(outliers_z) > 0:
-                    st.write("Contoh outlier:")
-                    st.dataframe(outliers_z[['Tahun', 'Region', selected_col]].head(), 
-                               use_container_width=True)
-    else:
-        st.warning("Silakan buat dataset analisis terlebih dahulu di halaman Preprocessing.")
+        with col2:
+            st.subheader(f"Boxplot {selected_col}")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.boxplot(y=df[selected_col], ax=ax)
+            ax.set_title(f'Boxplot {selected_col}')
+            st.pyplot(fig)
+        
+        # Outlier detection
+        st.subheader("Deteksi Outlier")
+        
+        Q1 = df[selected_col].quantile(0.25)
+        Q3 = df[selected_col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        outliers_iqr = df[(df[selected_col] < lower_bound) | (df[selected_col] > upper_bound)]
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Outlier (IQR Method)", len(outliers_iqr))
+            if len(outliers_iqr) > 0:
+                st.write("Outlier ditemukan:")
+                st.dataframe(outliers_iqr[['Provinsi', 'Kota - Desa', selected_col]], 
+                           use_container_width=True)
 
 # Page 4: Clustering Analysis
 elif page == "🤖 Clustering Analysis":
     st.header("Clustering Analysis")
     
-    # Check if we have normalized data
-    if 'df_norm' in st.session_state and 'df_analysis' in st.session_state:
-        df_norm = st.session_state.df_norm
-        df_analysis = st.session_state.df_analysis
+    # Select features for clustering
+    st.subheader("1. Seleksi Fitur untuk Clustering")
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    selected_features = st.multiselect(
+        "Pilih fitur untuk clustering:",
+        numeric_cols,
+        default=['Persentase_Kemiskinan', 'Indeks_Keparahan', 'Indeks_Kedalaman'] 
+        if len(numeric_cols) >= 3 else numeric_cols
+    )
+    
+    if selected_features and len(selected_features) >= 2:
+        X = df[selected_features].copy()
+        X = X.fillna(X.mean())
         
-        # Select features for clustering
-        st.subheader("1. Seleksi Fitur untuk Clustering")
-        numeric_cols = df_norm.select_dtypes(include=[np.number]).columns.tolist()
-        
-        selected_features = st.multiselect(
-            "Pilih fitur untuk clustering:",
-            numeric_cols,
-            default=['Persentase_Kemiskinan_Rata', 'Perubahan_Persentase'] 
-            if 'Persentase_Kemiskinan_Rata' in numeric_cols and 'Perubahan_Persentase' in numeric_cols
-            else numeric_cols[:min(2, len(numeric_cols))]
-        )
-        
-        if selected_features and len(selected_features) >= 2:
-            X = df_norm[selected_features].copy()
+        if len(X) >= 2:
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
             
-            # Check for missing values
-            if X.isnull().any().any():
-                st.warning("Terdapat missing values. Mengisi dengan mean...")
-                X = X.fillna(X.mean())
+            # K-Means Clustering
+            st.subheader("2. K-Means Clustering")
             
-            # Check if data is sufficient for clustering
-            if len(X) < 2:
-                st.error("Data terlalu sedikit untuk clustering. Minimal diperlukan 2 sampel.")
-            else:
-                # K-Means Clustering
-                st.subheader("2. K-Means Clustering")
+            inertia = []
+            k_range = range(2, min(11, len(X)))
+            
+            for k in k_range:
+                kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+                kmeans.fit(X_scaled)
+                inertia.append(kmeans.inertia_)
+            
+            if len(inertia) >= 2:
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.plot(k_range, inertia, 'bo-')
+                ax.set_xlabel('Number of clusters (k)')
+                ax.set_ylabel('Inertia')
+                ax.set_title('Elbow Method for Optimal k')
+                ax.grid(True)
+                st.pyplot(fig)
                 
-                # Determine optimal k using elbow method
-                st.write("**Menentukan jumlah cluster optimal (Elbow Method):**")
+                try:
+                    kn = KneeLocator(k_range, inertia, curve='convex', direction='decreasing')
+                    optimal_k = kn.knee if kn.knee else 3
+                    st.success(f"**Jumlah cluster optimal:** {optimal_k}")
+                except:
+                    optimal_k = st.slider("Pilih jumlah cluster:", 2, 10, 3)
                 
-                inertia = []
-                k_range = range(2, min(11, len(X) + 1))
+                kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+                clusters = kmeans.fit_predict(X_scaled)
                 
-                for k in k_range:
-                    try:
-                        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-                        kmeans.fit(X)
-                        inertia.append(kmeans.inertia_)
-                    except Exception as e:
-                        st.warning(f"Error pada k={k}: {str(e)}")
-                        break
+                df_clustered = df.copy()
+                df_clustered['Cluster_KMeans'] = clusters
                 
-                if len(inertia) >= 2:
-                    # Plot elbow curve
-                    fig, ax = plt.subplots(figsize=(10, 6))
-                    ax.plot(k_range[:len(inertia)], inertia, 'bo-')
-                    ax.set_xlabel('Number of clusters (k)')
-                    ax.set_ylabel('Inertia')
-                    ax.set_title('Elbow Method for Optimal k')
-                    ax.grid(True)
-                    st.pyplot(fig)
-                    
-                    # Find elbow point
-                    try:
-                        if len(inertia) >= 3:
-                            kn = KneeLocator(k_range[:len(inertia)], inertia, curve='convex', direction='decreasing')
-                            optimal_k = kn.knee
-                            if optimal_k is not None:
-                                st.success(f"**Jumlah cluster optimal:** {optimal_k}")
-                                k_slider_default = optimal_k
-                            else:
-                                k_slider_default = min(3, len(inertia)+1)
-                                optimal_k = st.slider("Pilih jumlah cluster:", 2, len(inertia)+1, k_slider_default)
-                        else:
-                            k_slider_default = min(3, len(inertia)+2)
-                            optimal_k = st.slider("Pilih jumlah cluster:", 2, len(inertia)+2, k_slider_default)
-                    except Exception as e:
-                        st.warning(f"Tidak dapat menentukan elbow point: {e}")
-                        optimal_k = st.slider("Pilih jumlah cluster:", 2, min(10, len(X)), 3)
-                    
-                    # Perform K-Means with optimal k
-                    try:
-                        kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
-                        clusters = kmeans.fit_predict(X)
-                        
-                        # Add cluster labels to dataframe
-                        df_clustered = df_analysis.copy()
-                        df_clustered['Cluster_KMeans'] = clusters
-                        
-                        # Calculate metrics
-                        if optimal_k > 1 and len(set(clusters)) > 1:
-                            silhouette = silhouette_score(X, clusters)
-                            db_index = davies_bouldin_score(X, clusters)
-                        else:
-                            silhouette = 0
-                            db_index = 0
-                            st.warning("Tidak dapat menghitung metrik untuk 1 cluster")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Silhouette Score", f"{silhouette:.3f}")
-                        with col2:
-                            st.metric("Davies-Bouldin Index", f"{db_index:.3f}")
-                        with col3:
-                            st.metric("Inertia", f"{kmeans.inertia_:.3f}")
-                        
-                        # Show clustering results
-                        st.subheader("3. Hasil Clustering")
-                        
-                        display_cols = ['Tahun', 'Region']
-                        if 'Tahun' in df_clustered.columns and 'Region' in df_clustered.columns:
-                            display_cols.extend(selected_features)
-                            display_cols.append('Cluster_KMeans')
-                        
-                        st.dataframe(df_clustered[display_cols], 
-                                    use_container_width=True)
-                        
-                        # Cluster distribution
-                        st.subheader("4. Distribusi Cluster")
-                        cluster_dist = df_clustered['Cluster_KMeans'].value_counts().sort_index()
-                        
-                        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-                        
-                        # Bar plot
-                        cluster_dist.plot(kind='bar', ax=ax1)
-                        ax1.set_title('Distribusi Jumlah Data per Cluster')
-                        ax1.set_xlabel('Cluster')
-                        ax1.set_ylabel('Jumlah Data')
-                        
-                        # Pie chart
-                        ax2.pie(cluster_dist.values, labels=cluster_dist.index, autopct='%1.1f%%')
-                        ax2.set_title('Proporsi Cluster')
-                        
-                        st.pyplot(fig)
-                        
-                        # Cluster characteristics
-                        st.subheader("5. Karakteristik Cluster")
-                        
-                        cluster_stats = df_clustered.groupby('Cluster_KMeans')[selected_features].mean()
-                        st.dataframe(cluster_stats, use_container_width=True)
-                        
-                        # Visualization of clusters
-                        if len(selected_features) >= 2:
-                            st.subheader("6. Visualisasi Cluster (2D)")
-                            
-                            # Use first two features for 2D visualization
-                            fig, ax = plt.subplots(figsize=(10, 6))
-                            
-                            scatter = ax.scatter(X.iloc[:, 0], X.iloc[:, 1], 
-                                                c=clusters, cmap='viridis', 
-                                                alpha=0.6, s=50)
-                            
-                            # Plot centroids
-                            centroids = kmeans.cluster_centers_
-                            ax.scatter(centroids[:, 0], centroids[:, 1],
-                                      c='red', marker='X', s=200, 
-                                      label='Centroids', alpha=0.8)
-                            
-                            ax.set_xlabel(selected_features[0])
-                            ax.set_ylabel(selected_features[1])
-                            ax.set_title('Cluster Visualization')
-                            ax.legend()
-                            ax.grid(True)
-                            
-                            # Add colorbar
-                            plt.colorbar(scatter, ax=ax, label='Cluster')
-                            
-                            st.pyplot(fig)
-                    
-                    except Exception as e:
-                        st.error(f"Error dalam K-Means clustering: {str(e)}")
+                if optimal_k > 1:
+                    silhouette = silhouette_score(X_scaled, clusters)
+                    db_index = davies_bouldin_score(X_scaled, clusters)
                 else:
-                    st.error("Tidak dapat membuat elbow plot. Data mungkin terlalu sedikit.")
-        else:
-            st.warning("Pilih minimal 2 fitur untuk melakukan clustering.")
-    else:
-        st.warning("Silakan buat dataset analisis terlebih dahulu di halaman Preprocessing.")
+                    silhouette = 0
+                    db_index = 0
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Silhouette Score", f"{silhouette:.3f}")
+                with col2:
+                    st.metric("Davies-Bouldin Index", f"{db_index:.3f}")
+                with col3:
+                    st.metric("Inertia", f"{kmeans.inertia_:.3f}")
+                
+                st.subheader("3. Hasil Clustering per Provinsi")
+                cluster_summary = df_clustered.groupby(['Provinsi', 'Cluster_KMeans']).agg({
+                    'Persentase_Kemiskinan': 'mean',
+                    'Indeks_Keparahan': 'mean',
+                    'Indeks_Kedalaman': 'mean',
+                    'Kota - Desa': 'count'
+                }).reset_index()
+                
+                st.dataframe(cluster_summary, use_container_width=True)
+                
+                # Highlight Lampung
+                st.subheader("4. Posisi Lampung dalam Clustering")
+                lampung_data = df_clustered[df_clustered['Provinsi'] == 'Lampung']
+                st.dataframe(lampung_data, use_container_width=True)
 
 # Page 5: Visualization
 elif page == "📊 Visualization":
     st.header("Visualization")
     
-    # Check if we have analysis data
-    if 'df_analysis' in st.session_state:
-        df_analysis = st.session_state.df_analysis
+    # Select features for visualization
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        x_feature = st.selectbox("Pilih fitur untuk sumbu X:", numeric_cols)
+    with col2:
+        y_feature = st.selectbox("Pilih fitur untuk sumbu Y:", numeric_cols)
+    
+    # Scatter plot with province differentiation
+    st.subheader(f"Scatter Plot dengan Highlight Provinsi")
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    # Color by province
+    provinces = df['Provinsi'].unique()
+    colors = plt.cm.tab20(np.linspace(0, 1, len(provinces)))
+    
+    for province, color in zip(provinces, colors):
+        province_data = df[df['Provinsi'] == province]
+        ax.scatter(province_data[x_feature], province_data[y_feature], 
+                  alpha=0.7, label=province, color=color, s=100)
+    
+    ax.set_xlabel(x_feature)
+    ax.set_ylabel(y_feature)
+    ax.set_title(f'{x_feature} vs {y_feature} (dibedakan per Provinsi)')
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    ax.grid(True, alpha=0.3)
+    st.pyplot(fig)
+    
+    # Correlation matrix
+    st.subheader("Matriks Korelasi")
+    
+    corr_matrix = df[numeric_cols].corr()
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', 
+                square=True, ax=ax)
+    ax.set_title('Matriks Korelasi Antar Variabel')
+    st.pyplot(fig)
+
+# Page 6: Analisis Lampung vs Provinsi Lain
+elif page == "🏆 Analisis Lampung vs Provinsi Lain":
+    st.header("🏆 Analisis Komparatif: Lampung vs Provinsi Lain")
+    
+    # Filter data untuk Lampung
+    lampung_data = df[df['Provinsi'] == 'Lampung']
+    other_provinces_data = df[df['Provinsi'] != 'Lampung']
+    
+    st.markdown("### 1. Gambaran Umum Kemiskinan Lampung")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        avg_poverty_lampung = lampung_data['Persentase_Kemiskinan'].mean()
+        st.metric("Rata-rata % Kemiskinan Lampung", f"{avg_poverty_lampung:.1f}%")
+    
+    with col2:
+        urban_poverty = lampung_data[lampung_data['Kota - Desa'] == 'Perkotaan']['Persentase_Kemiskinan'].values[0]
+        st.metric("Kemiskinan Perkotaan", f"{urban_poverty:.1f}%")
+    
+    with col3:
+        rural_poverty = lampung_data[lampung_data['Kota - Desa'] == 'Pedesaan']['Persentase_Kemiskinan'].values[0]
+        st.metric("Kemiskinan Pedesaan", f"{rural_poverty:.1f}%")
+    
+    st.markdown("### 2. Peringkat Lampung diantara Provinsi Lain")
+    
+    # Calculate averages per province
+    province_stats = df.groupby('Provinsi').agg({
+        'Persentase_Kemiskinan': 'mean',
+        'Garis_Kemiskinan': 'mean',
+        'Indeks_Keparahan': 'mean',
+        'Indeks_Kedalaman': 'mean'
+    }).reset_index()
+    
+    # Rank provinces
+    province_stats['Rank_Persentase'] = province_stats['Persentase_Kemiskinan'].rank(method='min', ascending=True)
+    province_stats['Rank_Keparahan'] = province_stats['Indeks_Keparahan'].rank(method='min', ascending=True)
+    province_stats['Rank_Kedalaman'] = province_stats['Indeks_Kedalaman'].rank(method='min', ascending=True)
+    
+    # Find Lampung's rank
+    lampung_rank = province_stats[province_stats['Provinsi'] == 'Lampung']
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        rank_pct = int(lampung_rank['Rank_Persentase'].values[0])
+        total_provinces = len(province_stats)
+        st.metric("Peringkat % Kemiskinan", f"{rank_pct}/{total_provinces}")
+    
+    with col2:
+        rank_sev = int(lampung_rank['Rank_Keparahan'].values[0])
+        st.metric("Peringkat Keparahan", f"{rank_sev}/{total_provinces}")
+    
+    with col3:
+        rank_depth = int(lampung_rank['Rank_Kedalaman'].values[0])
+        st.metric("Peringkat Kedalaman", f"{rank_depth}/{total_provinces}")
+    
+    st.markdown("### 3. Perbandingan dengan Rata-rata Nasional")
+    
+    national_avg = df.groupby('Kota - Desa').agg({
+        'Persentase_Kemiskinan': 'mean',
+        'Garis_Kemiskinan': 'mean',
+        'Indeks_Keparahan': 'mean',
+        'Indeks_Kedalaman': 'mean'
+    }).reset_index()
+    
+    comparison_data = pd.merge(lampung_data, national_avg, on='Kota - Desa', 
+                              suffixes=('_Lampung', '_Nasional'))
+    
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    
+    metrics = ['Persentase_Kemiskinan', 'Garis_Kemiskinan', 'Indeks_Keparahan', 'Indeks_Kedalaman']
+    titles = ['Persentase Kemiskinan (%)', 'Garis Kemiskinan (Rp)', 
+              'Indeks Keparahan', 'Indeks Kedalaman']
+    
+    for idx, (metric, title) in enumerate(zip(metrics, titles)):
+        ax = axes[idx//2, idx%2]
         
-        st.subheader("Time Series Analysis")
+        x = np.arange(len(comparison_data))
+        width = 0.35
         
-        # Select metric for time series
-        time_series_cols = df_analysis.select_dtypes(include=[np.number]).columns.tolist()
+        ax.bar(x - width/2, comparison_data[f'{metric}_Lampung'], width, label='Lampung', alpha=0.8)
+        ax.bar(x + width/2, comparison_data[f'{metric}_Nasional'], width, label='Nasional', alpha=0.8)
         
-        selected_metric = st.selectbox(
-            "Pilih metrik untuk analisis time series:",
-            time_series_cols,
-            index=0 if 'Persentase_Kemiskinan_Rata' in time_series_cols else 0
-        )
-        
-        if selected_metric and 'Tahun' in df_analysis.columns and 'Region' in df_analysis.columns:
-            fig, ax = plt.subplots(figsize=(12, 6))
-            
-            # Group by year and region
-            pivot_data = df_analysis.pivot_table(
-                values=selected_metric,
-                index='Tahun',
-                columns='Region',
-                aggfunc='mean'
-            )
-            
-            pivot_data.plot(marker='o', linewidth=2, ax=ax)
-            
-            ax.set_title(f'Trend {selected_metric} per Tahun dan Region')
-            ax.set_xlabel('Tahun')
-            ax.set_ylabel(selected_metric)
-            ax.grid(True)
-            ax.legend(title='Region Type')
-            
-            st.pyplot(fig)
-        
-        # Select features for scatter plot
-        numeric_cols = df_analysis.select_dtypes(include=[np.number]).columns.tolist()
-        
-        if len(numeric_cols) >= 2:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                x_feature = st.selectbox("Pilih fitur untuk sumbu X:", numeric_cols)
-            with col2:
-                y_feature = st.selectbox("Pilih fitur untuk sumbu Y:", numeric_cols)
-            
-            # Scatter plot
-            st.subheader(f"Scatter Plot: {x_feature} vs {y_feature}")
-            
-            fig, ax = plt.subplots(figsize=(10, 6))
-            
-            # Color by region if available
-            if 'Region' in df_analysis.columns:
-                regions = df_analysis['Region'].unique()
-                colors = plt.cm.Set1(np.linspace(0, 1, len(regions)))
-                
-                for region, color in zip(regions, colors):
-                    region_data = df_analysis[df_analysis['Region'] == region]
-                    ax.scatter(region_data[x_feature], region_data[y_feature], 
-                              alpha=0.6, label=region, color=color, s=50)
-                
-                ax.legend(title='Region')
-            else:
-                scatter = ax.scatter(df_analysis[x_feature], df_analysis[y_feature], 
-                                    alpha=0.6, s=50)
-            
-            ax.set_xlabel(x_feature)
-            ax.set_ylabel(y_feature)
-            ax.set_title(f'{x_feature} vs {y_feature}')
-            ax.grid(True)
-            st.pyplot(fig)
-            
-            # Correlation matrix
-            st.subheader("Matriks Korelasi")
-            
-            # Select columns for correlation matrix
-            corr_cols = st.multiselect(
-                "Pilih kolom untuk matriks korelasi:",
-                numeric_cols,
-                default=numeric_cols[:min(8, len(numeric_cols))]
-            )
-            
-            if len(corr_cols) >= 2:
-                corr_matrix = df_analysis[corr_cols].corr()
-                
-                fig, ax = plt.subplots(figsize=(12, 8))
-                sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', 
-                           square=True, ax=ax, cbar_kws={"shrink": 0.8})
-                ax.set_title('Matriks Korelasi Antar Variabel')
-                st.pyplot(fig)
-            
-            # Pairplot for selected features
-            st.subheader("Pairplot (terbatas 4 fitur)")
-            
-            selected_for_pairplot = st.multiselect(
-                "Pilih maksimal 4 fitur untuk pairplot:",
-                numeric_cols,
-                default=numeric_cols[:min(4, len(numeric_cols))],
-                max_selections=4
-            )
-            
-            if len(selected_for_pairplot) >= 2:
-                pairplot_data = df_analysis[selected_for_pairplot]
-                
-                # Add region for hue if available
-                if 'Region' in df_analysis.columns and len(df_analysis['Region'].unique()) <= 8:
-                    pairplot_data['Region'] = df_analysis['Region']
-                    hue_col = 'Region'
-                else:
-                    hue_col = None
-                
-                pairplot_fig = sns.pairplot(pairplot_data, 
-                                           hue=hue_col,
-                                           diag_kind='kde',
-                                           plot_kws={'alpha': 0.6},
-                                           palette='Set2' if hue_col else None)
-                
-                if hue_col:
-                    pairplot_fig._legend.set_title('Region')
-                
-                st.pyplot(pairplot_fig)
+        ax.set_xlabel('Wilayah')
+        ax.set_ylabel(title)
+        ax.set_title(f'Perbandingan {title}')
+        ax.set_xticks(x)
+        ax.set_xticklabels(comparison_data['Kota - Desa'])
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    st.pyplot(fig)
+    
+    st.markdown("### 4. Analisis Kesenjangan Kota-Desa")
+    
+    # Calculate urban-rural gap for each province
+    gap_analysis = df.pivot_table(index='Provinsi', columns='Kota - Desa', 
+                                 values='Persentase_Kemiskinan').reset_index()
+    gap_analysis['Kesenjangan'] = gap_analysis['Pedesaan'] - gap_analysis['Perkotaan']
+    
+    # Sort by gap
+    gap_analysis = gap_analysis.sort_values('Kesenjangan', ascending=False)
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    # Highlight Lampung
+    colors = ['red' if prov == 'Lampung' else 'skyblue' for prov in gap_analysis['Provinsi']]
+    
+    bars = ax.barh(gap_analysis['Provinsi'], gap_analysis['Kesenjangan'], color=colors)
+    ax.set_xlabel('Kesenjangan Kemiskinan (Pedesaan - Perkotaan) dalam %')
+    ax.set_title('Kesenjangan Kemiskinan Kota-Desa di Setiap Provinsi')
+    ax.invert_yaxis()  # Highest at top
+    ax.grid(True, alpha=0.3, axis='x')
+    
+    # Add value labels
+    for bar in bars:
+        width = bar.get_width()
+        ax.text(width, bar.get_y() + bar.get_height()/2, 
+                f'{width:.1f}%', ha='left', va='center')
+    
+    st.pyplot(fig)
+    
+    st.markdown("### 5. Benchmarking dengan Provinsi Terbaik dan Terburuk")
+    
+    # Find best and worst provinces
+    best_province = province_stats.loc[province_stats['Persentase_Kemiskinan'].idxmin()]
+    worst_province = province_stats.loc[province_stats['Persentase_Kemiskinan'].idxmax()]
+    
+    benchmark_data = pd.DataFrame({
+        'Provinsi': ['Lampung', best_province['Provinsi'], worst_province['Provinsi']],
+        'Persentase_Kemiskinan': [
+            lampung_rank['Persentase_Kemiskinan'].values[0],
+            best_province['Persentase_Kemiskinan'],
+            worst_province['Persentase_Kemiskinan']
+        ],
+        'Indeks_Keparahan': [
+            lampung_rank['Indeks_Keparahan'].values[0],
+            best_province['Indeks_Keparahan'],
+            worst_province['Indeks_Keparahan']
+        ],
+        'Indeks_Kedalaman': [
+            lampung_rank['Indeks_Kedalaman'].values[0],
+            best_province['Indeks_Kedalaman'],
+            worst_province['Indeks_Kedalaman']
+        ]
+    })
+    
+    st.dataframe(benchmark_data.style.highlight_min(subset=['Persentase_Kemiskinan', 
+                                                           'Indeks_Keparahan', 
+                                                           'Indeks_Kedalaman'], 
+                                                   color='lightgreen')
+                .highlight_max(subset=['Persentase_Kemiskinan', 
+                                      'Indeks_Keparahan', 
+                                      'Indeks_Kedalaman'], 
+                              color='lightcoral'),
+                use_container_width=True)
+    
+    st.markdown("### 6. Rekomendasi Berdasarkan Analisis")
+    
+    # Generate recommendations based on analysis
+    recommendations = []
+    
+    if lampung_rank['Rank_Persentase'].values[0] > len(province_stats) / 2:
+        recommendations.append("📉 **Prioritas Tinggi**: Persentase kemiskinan di atas rata-rata nasional")
+    
+    if gap_analysis[gap_analysis['Provinsi'] == 'Lampung']['Kesenjangan'].values[0] > gap_analysis['Kesenjangan'].median():
+        recommendations.append("🏙️ **Fokus Perdesaan**: Kesenjangan kota-desa cukup tinggi, butuh intervensi khusus di pedesaan")
+    
+    if lampung_rank['Indeks_Keparahan'].values[0] > 0.3:
+        recommendations.append("⚡ **Keparahan Tinggi**: Indeks keparahan menunjukkan kemiskinan yang mendalam")
+    
+    if recommendations:
+        st.subheader("Rekomendasi untuk Lampung:")
+        for i, rec in enumerate(recommendations, 1):
+            st.write(f"{i}. {rec}")
     else:
-        st.warning("Silakan buat dataset analisis terlebih dahulu di halaman Preprocessing.")
+        st.success("✅ Kondisi kemiskinan di Lampung relatif baik dibanding provinsi lain")
 
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center'>
-    <p>© 2024 - Clustering Kemiskinan Provinsi 2020-2022</p>
-    <p><small>Dashboard dibuat dengan Streamlit • Data: Kemiskinan Provinsi 2020-2022</small></p>
+    <p>© 2024 - Analisis Kemiskinan Provinsi di Indonesia</p>
+    <p><small>Dashboard dibuat dengan Streamlit • Data: Kemiskinan Provinsi 2020</small></p>
 </div>
 """, unsafe_allow_html=True)
