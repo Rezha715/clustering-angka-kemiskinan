@@ -208,117 +208,153 @@ elif page == "🤖 Clustering Analysis":
     st.subheader("1. Seleksi Fitur untuk Clustering")
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     
+    # PERBAIKAN DI SINI: Tambahkan default value
     selected_features = st.multiselect(
         "Pilih fitur untuk clustering:",
         numeric_cols,
-        default=['Persentase_Kemiskinan_Kota', 'Persentase_Kemiskinan_Desa', 'gap_kota_desa']
+        default=['Persentase_Kemiskinan_Kota', 'Persentase_Kemiskinan_Desa'] if len(numeric_cols) >= 2 else numeric_cols
     )
     
-    if len(selected_features) >= 2:
+    # PERBAIKAN: Cek apakah selected_features ada dan memiliki minimal 2 fitur
+    if selected_features and len(selected_features) >= 2:
         X = df[selected_features].copy()
         
-        # Normalize
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        # PERBAIKAN: Cek apakah ada missing values
+        if X.isnull().any().any():
+            st.warning("Terdapat missing values. Mengisi dengan mean...")
+            X = X.fillna(X.mean())
         
-        # K-Means Clustering
-        st.subheader("2. K-Means Clustering")
-        
-        # Determine optimal k using elbow method
-        st.write("**Menentukan jumlah cluster optimal (Elbow Method):**")
-        
-        inertia = []
-        k_range = range(2, 11)
-        
-        for k in k_range:
-            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-            kmeans.fit(X_scaled)
-            inertia.append(kmeans.inertia_)
-        
-        # Plot elbow curve
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(k_range, inertia, 'bo-')
-        ax.set_xlabel('Number of clusters (k)')
-        ax.set_ylabel('Inertia')
-        ax.set_title('Elbow Method for Optimal k')
-        ax.grid(True)
-        st.pyplot(fig)
-        
-        # Find elbow point
-        try:
-            kn = KneeLocator(k_range, inertia, curve='convex', direction='decreasing')
-            optimal_k = kn.knee
-            st.success(f"**Jumlah cluster optimal:** {optimal_k}")
-        except:
-            optimal_k = st.slider("Pilih jumlah cluster:", 2, 10, 3)
-        
-        # Perform K-Means with optimal k
-        kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
-        clusters = kmeans.fit_predict(X_scaled)
-        
-        # Add cluster labels to dataframe
-        df_clustered = df.copy()
-        df_clustered['Cluster_KMeans'] = clusters
-        
-        # Calculate metrics
-        silhouette = silhouette_score(X_scaled, clusters)
-        db_index = davies_bouldin_score(X_scaled, clusters)
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Silhouette Score", f"{silhouette:.3f}")
-        with col2:
-            st.metric("Davies-Bouldin Index", f"{db_index:.3f}")
-        with col3:
-            st.metric("Inertia", f"{kmeans.inertia_:.3f}")
-        
-        # Show clustering results
-        st.subheader("3. Hasil Clustering")
-        st.dataframe(df_clustered[['Kota - Desa'] + selected_features + ['Cluster_KMeans']], 
-                    use_container_width=True)
-        
-        # Cluster distribution
-        st.subheader("4. Distribusi Cluster")
-        cluster_dist = df_clustered['Cluster_KMeans'].value_counts().sort_index()
-        
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-        
-        # Bar plot
-        cluster_dist.plot(kind='bar', ax=ax1)
-        ax1.set_title('Distribusi Jumlah Data per Cluster')
-        ax1.set_xlabel('Cluster')
-        ax1.set_ylabel('Jumlah Data')
-        
-        # Pie chart
-        ax2.pie(cluster_dist.values, labels=cluster_dist.index, autopct='%1.1f%%')
-        ax2.set_title('Proporsi Cluster')
-        
-        st.pyplot(fig)
-        
-        # DBSCAN Clustering (optional)
-        st.subheader("5. DBSCAN Clustering (Opsional)")
-        
-        if st.checkbox("Coba DBSCAN Clustering"):
-            eps = st.slider("EPS (jarak maksimum antar titik):", 0.1, 5.0, 0.5, 0.1)
-            min_samples = st.slider("Min Samples (titik minimum dalam cluster):", 1, 10, 3)
+        # PERBAIKAN: Cek apakah data cukup untuk clustering
+        if len(X) < 2:
+            st.error("Data terlalu sedikit untuk clustering. Minimal diperlukan 2 sampel.")
+        else:
+            # Normalize
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
             
-            dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-            dbscan_clusters = dbscan.fit_predict(X_scaled)
+            # K-Means Clustering
+            st.subheader("2. K-Means Clustering")
             
-            df_clustered['Cluster_DBSCAN'] = dbscan_clusters
+            # Determine optimal k using elbow method
+            st.write("**Menentukan jumlah cluster optimal (Elbow Method):**")
             
-            # Count clusters (excluding noise points labeled as -1)
-            n_clusters = len(set(dbscan_clusters)) - (1 if -1 in dbscan_clusters else 0)
-            n_noise = list(dbscan_clusters).count(-1)
+            inertia = []
+            k_range = range(2, min(11, len(X) + 1))  # PERBAIKAN: Max k tidak boleh lebih dari n_samples
             
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Jumlah Cluster DBSCAN", n_clusters)
-            with col2:
-                st.metric("Noise Points", n_noise)
+            for k in k_range:
+                try:
+                    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+                    kmeans.fit(X_scaled)
+                    inertia.append(kmeans.inertia_)
+                except Exception as e:
+                    st.warning(f"Error pada k={k}: {str(e)}")
+                    break
             
-            st.dataframe(df_clustered[['Kota - Desa'] + selected_features + ['Cluster_DBSCAN']], 
-                        use_container_width=True)
+            if len(inertia) >= 2:
+                # Plot elbow curve
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.plot(k_range[:len(inertia)], inertia, 'bo-')
+                ax.set_xlabel('Number of clusters (k)')
+                ax.set_ylabel('Inertia')
+                ax.set_title('Elbow Method for Optimal k')
+                ax.grid(True)
+                st.pyplot(fig)
+                
+                # Find elbow point
+                try:
+                    if len(inertia) >= 3:
+                        kn = KneeLocator(k_range[:len(inertia)], inertia, curve='convex', direction='decreasing')
+                        optimal_k = kn.knee
+                        if optimal_k is not None:
+                            st.success(f"**Jumlah cluster optimal:** {optimal_k}")
+                        else:
+                            optimal_k = st.slider("Pilih jumlah cluster:", 2, len(inertia)+1, min(3, len(inertia)+1))
+                    else:
+                        optimal_k = st.slider("Pilih jumlah cluster:", 2, len(inertia)+2, min(3, len(inertia)+2))
+                except Exception as e:
+                    st.warning(f"Tidak dapat menentukan elbow point: {e}")
+                    optimal_k = st.slider("Pilih jumlah cluster:", 2, min(10, len(X)), 3)
+                
+                # Perform K-Means with optimal k
+                try:
+                    kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+                    clusters = kmeans.fit_predict(X_scaled)
+                    
+                    # Add cluster labels to dataframe
+                    df_clustered = df.copy()
+                    df_clustered['Cluster_KMeans'] = clusters
+                    
+                    # Calculate metrics
+                    if optimal_k > 1 and len(set(clusters)) > 1:
+                        silhouette = silhouette_score(X_scaled, clusters)
+                        db_index = davies_bouldin_score(X_scaled, clusters)
+                    else:
+                        silhouette = 0
+                        db_index = 0
+                        st.warning("Tidak dapat menghitung metrik untuk 1 cluster")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Silhouette Score", f"{silhouette:.3f}")
+                    with col2:
+                        st.metric("Davies-Bouldin Index", f"{db_index:.3f}")
+                    with col3:
+                        st.metric("Inertia", f"{kmeans.inertia_:.3f}")
+                    
+                    # Show clustering results
+                    st.subheader("3. Hasil Clustering")
+                    st.dataframe(df_clustered[['Kota - Desa'] + selected_features + ['Cluster_KMeans']], 
+                                use_container_width=True)
+                    
+                    # Cluster distribution
+                    st.subheader("4. Distribusi Cluster")
+                    cluster_dist = df_clustered['Cluster_KMeans'].value_counts().sort_index()
+                    
+                    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+                    
+                    # Bar plot
+                    cluster_dist.plot(kind='bar', ax=ax1)
+                    ax1.set_title('Distribusi Jumlah Data per Cluster')
+                    ax1.set_xlabel('Cluster')
+                    ax1.set_ylabel('Jumlah Data')
+                    
+                    # Pie chart
+                    ax2.pie(cluster_dist.values, labels=cluster_dist.index, autopct='%1.1f%%')
+                    ax2.set_title('Proporsi Cluster')
+                    
+                    st.pyplot(fig)
+                    
+                    # DBSCAN Clustering (optional)
+                    st.subheader("5. DBSCAN Clustering (Opsional)")
+                    
+                    if st.checkbox("Coba DBSCAN Clustering"):
+                        eps = st.slider("EPS (jarak maksimum antar titik):", 0.1, 5.0, 0.5, 0.1)
+                        min_samples = st.slider("Min Samples (titik minimum dalam cluster):", 1, 10, 3)
+                        
+                        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+                        dbscan_clusters = dbscan.fit_predict(X_scaled)
+                        
+                        df_clustered['Cluster_DBSCAN'] = dbscan_clusters
+                        
+                        # Count clusters (excluding noise points labeled as -1)
+                        n_clusters = len(set(dbscan_clusters)) - (1 if -1 in dbscan_clusters else 0)
+                        n_noise = list(dbscan_clusters).count(-1)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Jumlah Cluster DBSCAN", n_clusters)
+                        with col2:
+                            st.metric("Noise Points", n_noise)
+                        
+                        st.dataframe(df_clustered[['Kota - Desa'] + selected_features + ['Cluster_DBSCAN']], 
+                                    use_container_width=True)
+                
+                except Exception as e:
+                    st.error(f"Error dalam K-Means clustering: {str(e)}")
+            else:
+                st.error("Tidak dapat membuat elbow plot. Data mungkin terlalu sedikit.")
+    else:
+        st.warning("Pilih minimal 2 fitur untuk melakukan clustering.")
 
 # Page 5: Visualization
 elif page == "📊 Visualization":
