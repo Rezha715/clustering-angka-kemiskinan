@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 # Title
-st.title("📊 Analisis Clustering & Perbandingan Kemiskinan Provinsi")
+st.title("📊 Analisis Clustering Kemiskinan Provinsi 2020")
 st.markdown("---")
 
 # Sidebar for navigation
@@ -31,45 +31,27 @@ page = st.sidebar.radio("Pilih Halaman:",
                         "🔧 Preprocessing", 
                         "📈 EDA & Outlier Detection",
                         "🤖 Clustering Analysis",
-                        "📊 Visualization",
-                        "🏆 Analisis Lampung vs Provinsi Lain"])
+                        "📊 Visualization"])
 
-# Load data dengan data baru untuk Lampung dan provinsi lainnya
+# Load data
 @st.cache_data
 def load_data():
-    # Data sampel yang lebih lengkap dengan berbagai provinsi
+    # Create sample data based on the notebook structure
     data = {
-        'Provinsi': ['Lampung', 'Lampung', 'Jawa Barat', 'Jawa Barat', 'Jawa Timur', 'Jawa Timur',
-                    'Sumatera Utara', 'Sumatera Utara', 'Banten', 'Banten', 'DI Yogyakarta', 'DI Yogyakarta',
-                    'Bali', 'Bali', 'Nusa Tenggara Timur', 'Nusa Tenggara Timur', 'Papua', 'Papua'],
-        'Kota - Desa': ['Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan',
-                       'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan',
-                       'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan', 'Perkotaan', 'Pedesaan'],
-        'Tahun': [2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020],
-        'Semester': ['Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1',
-                    'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1',
-                    'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1', 'Semester 1'],
-        'Persentase_Kemiskinan': [9.5, 15.2, 8.3, 12.1, 7.8, 11.5, 10.2, 14.8, 9.1, 13.5, 8.7, 14.2, 
-                                  6.5, 9.8, 12.3, 18.7, 15.6, 23.4],
-        'Garis_Kemiskinan': [485000, 420000, 520000, 445000, 510000, 435000, 475000, 410000, 530000, 
-                            455000, 495000, 425000, 540000, 460000, 465000, 400000, 455000, 390000],
-        'Indeks_Keparahan': [0.28, 0.52, 0.25, 0.45, 0.23, 0.42, 0.30, 0.55, 0.27, 0.49, 0.26, 0.51, 
-                            0.20, 0.38, 0.35, 0.62, 0.40, 0.70],
-        'Indeks_Kedalaman': [1.25, 2.15, 1.15, 1.95, 1.10, 1.85, 1.35, 2.25, 1.20, 2.05, 1.18, 2.10, 
-                            0.95, 1.65, 1.50, 2.45, 1.75, 2.80],
-        'Jumlah_Penduduk_Miskin': [280.5, 450.3, 1200.8, 850.2, 950.4, 680.7, 320.6, 520.4, 180.3, 
-                                  290.5, 85.2, 150.8, 45.6, 75.3, 65.4, 210.7, 95.8, 350.2],
-        'Populasi_Total': [8500000, 8500000, 49500000, 49500000, 40500000, 40500000, 14700000, 14700000,
-                          12300000, 12300000, 3700000, 3700000, 4300000, 4300000, 5300000, 5300000,
-                          4300000, 4300000]
+        'Kota - Desa': ['Perkotaan', 'Pedesaan', 'Pedesaan + Perkotaan', 
+                       'Perkotaan', 'Pedesaan', 'Pedesaan + Perkotaan'],
+        'Persentase_Kemiskinan_Kota': [9.02, 13.83, 12.34, 9.59, 14.22, 12.76],
+        'Persentase_Kemiskinan_Desa': [10.5, 15.3, 13.8, 10.8, 15.8, 14.1],
+        'Garis_Kemiskinan_Kota': [500720, 433843, 453733, 504330, 437107, 457495],
+        'Garis_Kemiskinan_Desa': [510000, 440000, 460000, 515000, 445000, 465000],
+        'Indeks_Keparahan_Kota': [0.24, 0.49, 0.41, 0.29, 0.7, 0.57],
+        'Indeks_Keparahan_Desa': [0.26, 0.52, 0.43, 0.31, 0.73, 0.6],
+        'Indeks_Kedalaman_Kota': [1.23, 2.2, 1.9, 1.31, 2.48, 2.11],
+        'Indeks_Kedalaman_Desa': [1.28, 2.25, 1.95, 1.35, 2.53, 2.16],
+        'Jumlah_Penduduk_Miskin_Kota': [237.1, 812.22, 1049.32, 259.28, 831.86, 1091.14],
+        'Jumlah_Penduduk_Miskin_Desa': [250, 850, 1100, 265, 870, 1150]
     }
-    df = pd.DataFrame(data)
-    
-    # Hitung tingkat kemiskinan relatif
-    df['Tingkat_Kemiskinan_Relatif'] = df['Persentase_Kemiskinan'] / df['Persentase_Kemiskinan'].mean()
-    df['Kesenjangan_Kota_Desa'] = df.groupby('Provinsi')['Persentase_Kemiskinan'].transform(lambda x: x.max() - x.min())
-    
-    return df
+    return pd.DataFrame(data)
 
 df = load_data()
 
@@ -87,7 +69,6 @@ if page == "📁 Data Overview":
         st.subheader("Informasi Dataset")
         st.write(f"**Jumlah baris:** {df.shape[0]}")
         st.write(f"**Jumlah kolom:** {df.shape[1]}")
-        st.write(f"**Jumlah Provinsi:** {df['Provinsi'].nunique()}")
         st.write(f"**Variabel numerik:** {len(df.select_dtypes(include=[np.number]).columns)}")
         st.write(f"**Variabel kategorikal:** {len(df.select_dtypes(include=['object']).columns)}")
     
@@ -109,32 +90,39 @@ elif page == "🔧 Preprocessing":
     # Create new feature
     st.subheader("1. Pembuatan Fitur Baru")
     st.markdown("""
-    Fitur baru yang dibuat:
-    1. **Tingkat_Kemiskinan_Relatif**: Perbandingan persentase kemiskinan dengan rata-rata nasional
-    2. **Kesenjangan_Kota_Desa**: Selisih persentase kemiskinan kota dan desa per provinsi
+    Fitur baru yang dibuat: **gap_kota_desa**
+    - Menghitung selisih antara persentase kemiskinan kota dan desa
+    - Indikator kesenjangan kemiskinan perkotaan-perdesaan
     """)
+    
+    # Calculate gap
+    df['gap_kota_desa'] = df['Persentase_Kemiskinan_Kota'] - df['Persentase_Kemiskinan_Desa']
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.write("**Statistik Fitur Baru:**")
-        st.dataframe(df[['Tingkat_Kemiskinan_Relatif', 'Kesenjangan_Kota_Desa']].describe(), 
-                    use_container_width=True)
+        st.write("**Statistik Gap Kota-Desa:**")
+        st.dataframe(df['gap_kota_desa'].describe(), use_container_width=True)
     
     with col2:
-        st.write("**Data dengan Fitur Baru:**")
-        st.dataframe(df[['Provinsi', 'Kota - Desa', 'Persentase_Kemiskinan', 
-                        'Tingkat_Kemiskinan_Relatif', 'Kesenjangan_Kota_Desa']].head(10), 
+        st.write("**10 Data Pertama Gap Kota-Desa:**")
+        st.dataframe(df[['Kota - Desa', 'Persentase_Kemiskinan_Kota', 
+                        'Persentase_Kemiskinan_Desa', 'gap_kota_desa']].head(10), 
                     use_container_width=True)
     
     # Normalization
     st.subheader("2. Normalisasi Data")
+    st.markdown("""
+    Menggunakan **StandardScaler** untuk normalisasi data:
+    - Mengubah data ke skala yang sama (mean=0, std=1)
+    - Penting untuk algoritma clustering yang berbasis jarak
+    """)
     
     # Select numeric columns for normalization
     num_cols = st.multiselect(
         "Pilih kolom untuk dinormalisasi:",
         df.select_dtypes(include=[np.number]).columns.tolist(),
-        default=['Persentase_Kemiskinan', 'Garis_Kemiskinan', 'Indeks_Keparahan']
+        default=['Persentase_Kemiskinan_Kota', 'Persentase_Kemiskinan_Desa', 'gap_kota_desa']
     )
     
     if num_cols:
@@ -150,6 +138,10 @@ elif page == "🔧 Preprocessing":
         # After normalization
         st.write("**Data Setelah Normalisasi:**")
         st.dataframe(df_norm[num_cols].head(), use_container_width=True)
+        
+        # Show statistics
+        st.write("**Statistik Data Normalisasi:**")
+        st.dataframe(df_norm[num_cols].describe(), use_container_width=True)
 
 # Page 3: EDA & Outlier Detection
 elif page == "📈 EDA & Outlier Detection":
@@ -181,6 +173,7 @@ elif page == "📈 EDA & Outlier Detection":
         # Outlier detection
         st.subheader("Deteksi Outlier")
         
+        # IQR Method
         Q1 = df[selected_col].quantile(0.25)
         Q3 = df[selected_col].quantile(0.75)
         IQR = Q3 - Q1
@@ -189,14 +182,23 @@ elif page == "📈 EDA & Outlier Detection":
         
         outliers_iqr = df[(df[selected_col] < lower_bound) | (df[selected_col] > upper_bound)]
         
+        # Z-score Method
+        z_scores = np.abs((df[selected_col] - df[selected_col].mean()) / df[selected_col].std())
+        outliers_z = df[z_scores > 3]
+        
         col1, col2 = st.columns(2)
         
         with col1:
             st.metric("Outlier (IQR Method)", len(outliers_iqr))
             if len(outliers_iqr) > 0:
-                st.write("Outlier ditemukan:")
-                st.dataframe(outliers_iqr[['Provinsi', 'Kota - Desa', selected_col]], 
-                           use_container_width=True)
+                st.write("Contoh outlier:")
+                st.dataframe(outliers_iqr[[selected_col]].head(), use_container_width=True)
+        
+        with col2:
+            st.metric("Outlier (Z-score > 3)", len(outliers_z))
+            if len(outliers_z) > 0:
+                st.write("Contoh outlier:")
+                st.dataframe(outliers_z[[selected_col]].head(), use_container_width=True)
 
 # Page 4: Clustering Analysis
 elif page == "🤖 Clustering Analysis":
@@ -209,80 +211,114 @@ elif page == "🤖 Clustering Analysis":
     selected_features = st.multiselect(
         "Pilih fitur untuk clustering:",
         numeric_cols,
-        default=['Persentase_Kemiskinan', 'Indeks_Keparahan', 'Indeks_Kedalaman'] 
-        if len(numeric_cols) >= 3 else numeric_cols
+        default=['Persentase_Kemiskinan_Kota', 'Persentase_Kemiskinan_Desa', 'gap_kota_desa']
     )
     
-    if selected_features and len(selected_features) >= 2:
+    if len(selected_features) >= 2:
         X = df[selected_features].copy()
-        X = X.fillna(X.mean())
         
-        if len(X) >= 2:
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
+        # Normalize
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        
+        # K-Means Clustering
+        st.subheader("2. K-Means Clustering")
+        
+        # Determine optimal k using elbow method
+        st.write("**Menentukan jumlah cluster optimal (Elbow Method):**")
+        
+        inertia = []
+        k_range = range(2, 11)
+        
+        for k in k_range:
+            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+            kmeans.fit(X_scaled)
+            inertia.append(kmeans.inertia_)
+        
+        # Plot elbow curve
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(k_range, inertia, 'bo-')
+        ax.set_xlabel('Number of clusters (k)')
+        ax.set_ylabel('Inertia')
+        ax.set_title('Elbow Method for Optimal k')
+        ax.grid(True)
+        st.pyplot(fig)
+        
+        # Find elbow point
+        try:
+            kn = KneeLocator(k_range, inertia, curve='convex', direction='decreasing')
+            optimal_k = kn.knee
+            st.success(f"**Jumlah cluster optimal:** {optimal_k}")
+        except:
+            optimal_k = st.slider("Pilih jumlah cluster:", 2, 10, 3)
+        
+        # Perform K-Means with optimal k
+        kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+        clusters = kmeans.fit_predict(X_scaled)
+        
+        # Add cluster labels to dataframe
+        df_clustered = df.copy()
+        df_clustered['Cluster_KMeans'] = clusters
+        
+        # Calculate metrics
+        silhouette = silhouette_score(X_scaled, clusters)
+        db_index = davies_bouldin_score(X_scaled, clusters)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Silhouette Score", f"{silhouette:.3f}")
+        with col2:
+            st.metric("Davies-Bouldin Index", f"{db_index:.3f}")
+        with col3:
+            st.metric("Inertia", f"{kmeans.inertia_:.3f}")
+        
+        # Show clustering results
+        st.subheader("3. Hasil Clustering")
+        st.dataframe(df_clustered[['Kota - Desa'] + selected_features + ['Cluster_KMeans']], 
+                    use_container_width=True)
+        
+        # Cluster distribution
+        st.subheader("4. Distribusi Cluster")
+        cluster_dist = df_clustered['Cluster_KMeans'].value_counts().sort_index()
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        
+        # Bar plot
+        cluster_dist.plot(kind='bar', ax=ax1)
+        ax1.set_title('Distribusi Jumlah Data per Cluster')
+        ax1.set_xlabel('Cluster')
+        ax1.set_ylabel('Jumlah Data')
+        
+        # Pie chart
+        ax2.pie(cluster_dist.values, labels=cluster_dist.index, autopct='%1.1f%%')
+        ax2.set_title('Proporsi Cluster')
+        
+        st.pyplot(fig)
+        
+        # DBSCAN Clustering (optional)
+        st.subheader("5. DBSCAN Clustering (Opsional)")
+        
+        if st.checkbox("Coba DBSCAN Clustering"):
+            eps = st.slider("EPS (jarak maksimum antar titik):", 0.1, 5.0, 0.5, 0.1)
+            min_samples = st.slider("Min Samples (titik minimum dalam cluster):", 1, 10, 3)
             
-            # K-Means Clustering
-            st.subheader("2. K-Means Clustering")
+            dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+            dbscan_clusters = dbscan.fit_predict(X_scaled)
             
-            inertia = []
-            k_range = range(2, min(11, len(X)))
+            df_clustered['Cluster_DBSCAN'] = dbscan_clusters
             
-            for k in k_range:
-                kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-                kmeans.fit(X_scaled)
-                inertia.append(kmeans.inertia_)
+            # Count clusters (excluding noise points labeled as -1)
+            n_clusters = len(set(dbscan_clusters)) - (1 if -1 in dbscan_clusters else 0)
+            n_noise = list(dbscan_clusters).count(-1)
             
-            if len(inertia) >= 2:
-                fig, ax = plt.subplots(figsize=(10, 6))
-                ax.plot(k_range, inertia, 'bo-')
-                ax.set_xlabel('Number of clusters (k)')
-                ax.set_ylabel('Inertia')
-                ax.set_title('Elbow Method for Optimal k')
-                ax.grid(True)
-                st.pyplot(fig)
-                
-                try:
-                    kn = KneeLocator(k_range, inertia, curve='convex', direction='decreasing')
-                    optimal_k = kn.knee if kn.knee else 3
-                    st.success(f"**Jumlah cluster optimal:** {optimal_k}")
-                except:
-                    optimal_k = st.slider("Pilih jumlah cluster:", 2, 10, 3)
-                
-                kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
-                clusters = kmeans.fit_predict(X_scaled)
-                
-                df_clustered = df.copy()
-                df_clustered['Cluster_KMeans'] = clusters
-                
-                if optimal_k > 1:
-                    silhouette = silhouette_score(X_scaled, clusters)
-                    db_index = davies_bouldin_score(X_scaled, clusters)
-                else:
-                    silhouette = 0
-                    db_index = 0
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Silhouette Score", f"{silhouette:.3f}")
-                with col2:
-                    st.metric("Davies-Bouldin Index", f"{db_index:.3f}")
-                with col3:
-                    st.metric("Inertia", f"{kmeans.inertia_:.3f}")
-                
-                st.subheader("3. Hasil Clustering per Provinsi")
-                cluster_summary = df_clustered.groupby(['Provinsi', 'Cluster_KMeans']).agg({
-                    'Persentase_Kemiskinan': 'mean',
-                    'Indeks_Keparahan': 'mean',
-                    'Indeks_Kedalaman': 'mean',
-                    'Kota - Desa': 'count'
-                }).reset_index()
-                
-                st.dataframe(cluster_summary, use_container_width=True)
-                
-                # Highlight Lampung
-                st.subheader("4. Posisi Lampung dalam Clustering")
-                lampung_data = df_clustered[df_clustered['Provinsi'] == 'Lampung']
-                st.dataframe(lampung_data, use_container_width=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Jumlah Cluster DBSCAN", n_clusters)
+            with col2:
+                st.metric("Noise Points", n_noise)
+            
+            st.dataframe(df_clustered[['Kota - Desa'] + selected_features + ['Cluster_DBSCAN']], 
+                        use_container_width=True)
 
 # Page 5: Visualization
 elif page == "📊 Visualization":
@@ -298,25 +334,15 @@ elif page == "📊 Visualization":
     with col2:
         y_feature = st.selectbox("Pilih fitur untuk sumbu Y:", numeric_cols)
     
-    # Scatter plot with province differentiation
-    st.subheader(f"Scatter Plot dengan Highlight Provinsi")
+    # Scatter plot
+    st.subheader(f"Scatter Plot: {x_feature} vs {y_feature}")
     
-    fig, ax = plt.subplots(figsize=(12, 8))
-    
-    # Color by province
-    provinces = df['Provinsi'].unique()
-    colors = plt.cm.tab20(np.linspace(0, 1, len(provinces)))
-    
-    for province, color in zip(provinces, colors):
-        province_data = df[df['Provinsi'] == province]
-        ax.scatter(province_data[x_feature], province_data[y_feature], 
-                  alpha=0.7, label=province, color=color, s=100)
-    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    scatter = ax.scatter(df[x_feature], df[y_feature], alpha=0.6)
     ax.set_xlabel(x_feature)
     ax.set_ylabel(y_feature)
-    ax.set_title(f'{x_feature} vs {y_feature} (dibedakan per Provinsi)')
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    ax.grid(True, alpha=0.3)
+    ax.set_title(f'{x_feature} vs {y_feature}')
+    ax.grid(True)
     st.pyplot(fig)
     
     # Correlation matrix
@@ -329,192 +355,28 @@ elif page == "📊 Visualization":
                 square=True, ax=ax)
     ax.set_title('Matriks Korelasi Antar Variabel')
     st.pyplot(fig)
-
-# Page 6: Analisis Lampung vs Provinsi Lain
-elif page == "🏆 Analisis Lampung vs Provinsi Lain":
-    st.header("🏆 Analisis Komparatif: Lampung vs Provinsi Lain")
     
-    # Filter data untuk Lampung
-    lampung_data = df[df['Provinsi'] == 'Lampung']
-    other_provinces_data = df[df['Provinsi'] != 'Lampung']
+    # Pairplot for selected features
+    st.subheader("Pairplot (terbatas 5 fitur)")
     
-    st.markdown("### 1. Gambaran Umum Kemiskinan Lampung")
+    selected_for_pairplot = st.multiselect(
+        "Pilih maksimal 5 fitur untuk pairplot:",
+        numeric_cols,
+        default=numeric_cols[:3] if len(numeric_cols) >= 3 else numeric_cols,
+        max_selections=5
+    )
     
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        avg_poverty_lampung = lampung_data['Persentase_Kemiskinan'].mean()
-        st.metric("Rata-rata % Kemiskinan Lampung", f"{avg_poverty_lampung:.1f}%")
-    
-    with col2:
-        urban_poverty = lampung_data[lampung_data['Kota - Desa'] == 'Perkotaan']['Persentase_Kemiskinan'].values[0]
-        st.metric("Kemiskinan Perkotaan", f"{urban_poverty:.1f}%")
-    
-    with col3:
-        rural_poverty = lampung_data[lampung_data['Kota - Desa'] == 'Pedesaan']['Persentase_Kemiskinan'].values[0]
-        st.metric("Kemiskinan Pedesaan", f"{rural_poverty:.1f}%")
-    
-    st.markdown("### 2. Peringkat Lampung diantara Provinsi Lain")
-    
-    # Calculate averages per province
-    province_stats = df.groupby('Provinsi').agg({
-        'Persentase_Kemiskinan': 'mean',
-        'Garis_Kemiskinan': 'mean',
-        'Indeks_Keparahan': 'mean',
-        'Indeks_Kedalaman': 'mean'
-    }).reset_index()
-    
-    # Rank provinces
-    province_stats['Rank_Persentase'] = province_stats['Persentase_Kemiskinan'].rank(method='min', ascending=True)
-    province_stats['Rank_Keparahan'] = province_stats['Indeks_Keparahan'].rank(method='min', ascending=True)
-    province_stats['Rank_Kedalaman'] = province_stats['Indeks_Kedalaman'].rank(method='min', ascending=True)
-    
-    # Find Lampung's rank
-    lampung_rank = province_stats[province_stats['Provinsi'] == 'Lampung']
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        rank_pct = int(lampung_rank['Rank_Persentase'].values[0])
-        total_provinces = len(province_stats)
-        st.metric("Peringkat % Kemiskinan", f"{rank_pct}/{total_provinces}")
-    
-    with col2:
-        rank_sev = int(lampung_rank['Rank_Keparahan'].values[0])
-        st.metric("Peringkat Keparahan", f"{rank_sev}/{total_provinces}")
-    
-    with col3:
-        rank_depth = int(lampung_rank['Rank_Kedalaman'].values[0])
-        st.metric("Peringkat Kedalaman", f"{rank_depth}/{total_provinces}")
-    
-    st.markdown("### 3. Perbandingan dengan Rata-rata Nasional")
-    
-    national_avg = df.groupby('Kota - Desa').agg({
-        'Persentase_Kemiskinan': 'mean',
-        'Garis_Kemiskinan': 'mean',
-        'Indeks_Keparahan': 'mean',
-        'Indeks_Kedalaman': 'mean'
-    }).reset_index()
-    
-    comparison_data = pd.merge(lampung_data, national_avg, on='Kota - Desa', 
-                              suffixes=('_Lampung', '_Nasional'))
-    
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    
-    metrics = ['Persentase_Kemiskinan', 'Garis_Kemiskinan', 'Indeks_Keparahan', 'Indeks_Kedalaman']
-    titles = ['Persentase Kemiskinan (%)', 'Garis Kemiskinan (Rp)', 
-              'Indeks Keparahan', 'Indeks Kedalaman']
-    
-    for idx, (metric, title) in enumerate(zip(metrics, titles)):
-        ax = axes[idx//2, idx%2]
-        
-        x = np.arange(len(comparison_data))
-        width = 0.35
-        
-        ax.bar(x - width/2, comparison_data[f'{metric}_Lampung'], width, label='Lampung', alpha=0.8)
-        ax.bar(x + width/2, comparison_data[f'{metric}_Nasional'], width, label='Nasional', alpha=0.8)
-        
-        ax.set_xlabel('Wilayah')
-        ax.set_ylabel(title)
-        ax.set_title(f'Perbandingan {title}')
-        ax.set_xticks(x)
-        ax.set_xticklabels(comparison_data['Kota - Desa'])
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    st.markdown("### 4. Analisis Kesenjangan Kota-Desa")
-    
-    # Calculate urban-rural gap for each province
-    gap_analysis = df.pivot_table(index='Provinsi', columns='Kota - Desa', 
-                                 values='Persentase_Kemiskinan').reset_index()
-    gap_analysis['Kesenjangan'] = gap_analysis['Pedesaan'] - gap_analysis['Perkotaan']
-    
-    # Sort by gap
-    gap_analysis = gap_analysis.sort_values('Kesenjangan', ascending=False)
-    
-    fig, ax = plt.subplots(figsize=(12, 8))
-    
-    # Highlight Lampung
-    colors = ['red' if prov == 'Lampung' else 'skyblue' for prov in gap_analysis['Provinsi']]
-    
-    bars = ax.barh(gap_analysis['Provinsi'], gap_analysis['Kesenjangan'], color=colors)
-    ax.set_xlabel('Kesenjangan Kemiskinan (Pedesaan - Perkotaan) dalam %')
-    ax.set_title('Kesenjangan Kemiskinan Kota-Desa di Setiap Provinsi')
-    ax.invert_yaxis()  # Highest at top
-    ax.grid(True, alpha=0.3, axis='x')
-    
-    # Add value labels
-    for bar in bars:
-        width = bar.get_width()
-        ax.text(width, bar.get_y() + bar.get_height()/2, 
-                f'{width:.1f}%', ha='left', va='center')
-    
-    st.pyplot(fig)
-    
-    st.markdown("### 5. Benchmarking dengan Provinsi Terbaik dan Terburuk")
-    
-    # Find best and worst provinces
-    best_province = province_stats.loc[province_stats['Persentase_Kemiskinan'].idxmin()]
-    worst_province = province_stats.loc[province_stats['Persentase_Kemiskinan'].idxmax()]
-    
-    benchmark_data = pd.DataFrame({
-        'Provinsi': ['Lampung', best_province['Provinsi'], worst_province['Provinsi']],
-        'Persentase_Kemiskinan': [
-            lampung_rank['Persentase_Kemiskinan'].values[0],
-            best_province['Persentase_Kemiskinan'],
-            worst_province['Persentase_Kemiskinan']
-        ],
-        'Indeks_Keparahan': [
-            lampung_rank['Indeks_Keparahan'].values[0],
-            best_province['Indeks_Keparahan'],
-            worst_province['Indeks_Keparahan']
-        ],
-        'Indeks_Kedalaman': [
-            lampung_rank['Indeks_Kedalaman'].values[0],
-            best_province['Indeks_Kedalaman'],
-            worst_province['Indeks_Kedalaman']
-        ]
-    })
-    
-    st.dataframe(benchmark_data.style.highlight_min(subset=['Persentase_Kemiskinan', 
-                                                           'Indeks_Keparahan', 
-                                                           'Indeks_Kedalaman'], 
-                                                   color='lightgreen')
-                .highlight_max(subset=['Persentase_Kemiskinan', 
-                                      'Indeks_Keparahan', 
-                                      'Indeks_Kedalaman'], 
-                              color='lightcoral'),
-                use_container_width=True)
-    
-    st.markdown("### 6. Rekomendasi Berdasarkan Analisis")
-    
-    # Generate recommendations based on analysis
-    recommendations = []
-    
-    if lampung_rank['Rank_Persentase'].values[0] > len(province_stats) / 2:
-        recommendations.append("📉 **Prioritas Tinggi**: Persentase kemiskinan di atas rata-rata nasional")
-    
-    if gap_analysis[gap_analysis['Provinsi'] == 'Lampung']['Kesenjangan'].values[0] > gap_analysis['Kesenjangan'].median():
-        recommendations.append("🏙️ **Fokus Perdesaan**: Kesenjangan kota-desa cukup tinggi, butuh intervensi khusus di pedesaan")
-    
-    if lampung_rank['Indeks_Keparahan'].values[0] > 0.3:
-        recommendations.append("⚡ **Keparahan Tinggi**: Indeks keparahan menunjukkan kemiskinan yang mendalam")
-    
-    if recommendations:
-        st.subheader("Rekomendasi untuk Lampung:")
-        for i, rec in enumerate(recommendations, 1):
-            st.write(f"{i}. {rec}")
-    else:
-        st.success("✅ Kondisi kemiskinan di Lampung relatif baik dibanding provinsi lain")
+    if len(selected_for_pairplot) >= 2:
+        pairplot_fig = sns.pairplot(df[selected_for_pairplot], 
+                                   diag_kind='kde',
+                                   plot_kws={'alpha': 0.6})
+        st.pyplot(pairplot_fig)
 
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center'>
-    <p>© 2024 - Analisis Kemiskinan Provinsi di Indonesia</p>
+    <p>© 2024 - Clustering Kemiskinan Provinsi 2020</p>
     <p><small>Dashboard dibuat dengan Streamlit • Data: Kemiskinan Provinsi 2020</small></p>
 </div>
 """, unsafe_allow_html=True)
